@@ -17,16 +17,18 @@ import (
 	"time"
 )
 
+const (
+	randomSourceStr = "0123456789abcdefghijklmnopqrstuvwxyz~！@#￥%……&*（）——+」|「P:>?/*-+.+*_*+我爱中国^_^"
+)
+
+var randomSourceRune = []rune(randomSourceStr)
+
 // GetRandomString 获取指定长度的随机字符串
 func GetRandomString(l int) string {
-	str := "0123456789abcdefghijklmnopqrstuvwxyz~！@#￥%……&*（）——+」|「P:>?/*-+.+*_*+我爱中国^_^"
-	//str := "0123456789abcdefghijklmnopqrstuvwxyz"
-	bytes := []rune(str)
 	result := make([]rune, l, l)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < l; i++ {
-		result[i] = bytes[r.Intn(len(bytes))]
-		//result = append(result, bytes[r.Intn(len(bytes))])
+		result[i] = randomSourceRune[r.Intn(len(randomSourceRune))]
 	}
 	return string(result)
 }
