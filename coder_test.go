@@ -4,6 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
+	"hash"
+	"io"
+	"strings"
 	"testing"
 )
 
@@ -70,4 +73,25 @@ S7GqYMVe
 	}
 
 	fmt.Println(string(decrypt))
+}
+
+func TestHash(t *testing.T) {
+	testData := []*struct {
+		SrcReader io.Reader
+		HashHex   string
+		H         hash.Hash
+	}{
+		{SrcReader: strings.NewReader("1234567890qwertyuio"), HashHex: "457122e146bd48a77c96924588814966", H: md5.New()},
+	}
+
+	for _, d := range testData {
+		res, err := HashByReader(d.H, d.SrcReader)
+		if err != nil {
+			panic(err)
+		}
+
+		if res.ToHexStr() != d.HashHex {
+			panic("hash错误")
+		}
+	}
 }

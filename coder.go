@@ -1,14 +1,19 @@
 package coderutils
 
 import (
+	"bytes"
 	cryptoRand "crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"github.com/tjfoc/gmsm/sm2"
 	"github.com/tjfoc/gmsm/sm4"
 	"github.com/tjfoc/gmsm/x509"
+	"hash"
+	"io"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -166,4 +171,31 @@ func Sm2DecryptByBase64Data(pemPrivateKey string, data string) ([]byte, error) {
 		return nil, errors.New("解析数据失败")
 	}
 	return Sm2Decrypt(pemPrivateKey, d)
+}
+
+type HashResult []byte
+
+func (h HashResult) ToHexStr() string {
+	return hex.EncodeToString(h)
+}
+
+func Hash(h hash.Hash, b []byte) (HashResult, error) {
+	return HashByReader(h, bytes.NewReader(b))
+}
+
+func HashByFilePath(h hash.Hash, p string) (HashResult, error) {
+	file, err := os.OpenFile(p, os.O_RDONLY, 0655)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return HashByReader(h, file)
+}
+
+func HashByReader(h hash.Hash, r io.Reader) (HashResult, error) {
+	if _, err := io.Copy(h, r); err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
