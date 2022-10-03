@@ -1,19 +1,15 @@
 package coderutils
 
 import (
-	"bytes"
 	cryptoRand "crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/pem"
 	"errors"
+	"github.com/go-base-lib/goextension"
 	"github.com/tjfoc/gmsm/sm2"
 	"github.com/tjfoc/gmsm/sm4"
 	"github.com/tjfoc/gmsm/x509"
-	"hash"
-	"io"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -80,7 +76,7 @@ func Sm4Encrypt(key, plainText []byte) ([]byte, error) {
 }
 
 // Sm4Decrypt sm4解密
-func Sm4Decrypt(key, cipherText []byte) ([]byte, error) {
+func Sm4Decrypt(key, cipherText []byte) (goextension.Bytes, error) {
 	return sm4.Sm4Ecb(key, cipherText, false)
 }
 
@@ -89,7 +85,7 @@ func Sm4RandomKey() []byte {
 	return []byte(GetRandomString(16))[:16]
 }
 
-func Sm2KeyEncryptWithMod(pubKey *sm2.PublicKey, data []byte, mod int) ([]byte, error) {
+func Sm2KeyEncryptWithMod(pubKey *sm2.PublicKey, data []byte, mod int) (goextension.Bytes, error) {
 	encrypt, err := sm2.Encrypt(pubKey, data, cryptoRand.Reader, mod)
 	if err != nil {
 		return nil, errors.New("加密数据失败")
@@ -98,7 +94,7 @@ func Sm2KeyEncryptWithMod(pubKey *sm2.PublicKey, data []byte, mod int) ([]byte, 
 }
 
 // Sm2Encrypt Sm2加密
-func Sm2Encrypt(pemPublicKey string, data []byte) ([]byte, error) {
+func Sm2Encrypt(pemPublicKey string, data []byte) (goextension.Bytes, error) {
 	key, err := ConvertPemToPublicKey(pemPublicKey)
 	if err != nil {
 		return nil, err
@@ -106,7 +102,7 @@ func Sm2Encrypt(pemPublicKey string, data []byte) ([]byte, error) {
 	return Sm2KeyEncryptWithMod(key, data, sm2.C1C2C3)
 }
 
-func Sm2EncryptWithMod(pemPublicKey string, data []byte, mod int) ([]byte, error) {
+func Sm2EncryptWithMod(pemPublicKey string, data []byte, mod int) (goextension.Bytes, error) {
 	key, err := ConvertPemToPublicKey(pemPublicKey)
 	if err != nil {
 		return nil, err
@@ -115,7 +111,7 @@ func Sm2EncryptWithMod(pemPublicKey string, data []byte, mod int) ([]byte, error
 	return Sm2KeyEncryptWithMod(key, data, mod)
 }
 
-func Sm2KeyDecryptWithMod(priKey *sm2.PrivateKey, data []byte, mod int) ([]byte, error) {
+func Sm2KeyDecryptWithMod(priKey *sm2.PrivateKey, data []byte, mod int) (goextension.Bytes, error) {
 	decrypt, err := sm2.Decrypt(priKey, data, mod)
 	if err != nil {
 		return nil, errors.New("解密数据失败")
@@ -123,7 +119,7 @@ func Sm2KeyDecryptWithMod(priKey *sm2.PrivateKey, data []byte, mod int) ([]byte,
 	return decrypt, nil
 }
 
-func Sm2DecryptWithMod(pemPrivateKey string, data []byte, mod int) ([]byte, error) {
+func Sm2DecryptWithMod(pemPrivateKey string, data []byte, mod int) (goextension.Bytes, error) {
 	key, err := ConvertPemToPrivateKey(pemPrivateKey)
 	if err != nil {
 		return nil, err
@@ -132,7 +128,7 @@ func Sm2DecryptWithMod(pemPrivateKey string, data []byte, mod int) ([]byte, erro
 }
 
 // Sm2Decrypt sn2解密
-func Sm2Decrypt(pemPrivateKey string, data []byte) ([]byte, error) {
+func Sm2Decrypt(pemPrivateKey string, data []byte) (goextension.Bytes, error) {
 	key, err := ConvertPemToPrivateKey(pemPrivateKey)
 	if err != nil {
 		return nil, err
@@ -141,7 +137,7 @@ func Sm2Decrypt(pemPrivateKey string, data []byte) ([]byte, error) {
 	return Sm2KeyDecryptWithMod(key, data, sm2.C1C3C2)
 }
 
-func Sm2Sign(pemPrivateKey string, data []byte) ([]byte, error) {
+func Sm2Sign(pemPrivateKey string, data []byte) (goextension.Bytes, error) {
 	key, err := ConvertPemToPrivateKey(pemPrivateKey)
 	if err != nil {
 		return nil, err
@@ -162,42 +158,15 @@ func Sm2VerifySignWithKey(publicKey *sm2.PublicKey, sign, data []byte) bool {
 	return publicKey.Verify(sign, data)
 }
 
-func Sm2SignWithKey(privateKey *sm2.PrivateKey, data []byte) ([]byte, error) {
+func Sm2SignWithKey(privateKey *sm2.PrivateKey, data []byte) (goextension.Bytes, error) {
 	return privateKey.Sign(cryptoRand.Reader, data, nil)
 }
 
 // Sm2DecryptByBase64Data sm2解密，数据格式为Base64
-func Sm2DecryptByBase64Data(pemPrivateKey string, data string) ([]byte, error) {
+func Sm2DecryptByBase64Data(pemPrivateKey string, data string) (goextension.Bytes, error) {
 	d, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, errors.New("解析数据失败")
 	}
 	return Sm2Decrypt(pemPrivateKey, d)
-}
-
-type HashResult []byte
-
-func (h HashResult) ToHexStr() string {
-	return hex.EncodeToString(h)
-}
-
-func Hash(h hash.Hash, b []byte) (HashResult, error) {
-	return HashByReader(h, bytes.NewReader(b))
-}
-
-func HashByFilePath(h hash.Hash, p string) (HashResult, error) {
-	file, err := os.OpenFile(p, os.O_RDONLY, 0655)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	return HashByReader(h, file)
-}
-
-func HashByReader(h hash.Hash, r io.Reader) (HashResult, error) {
-	if _, err := io.Copy(h, r); err != nil {
-		return nil, err
-	}
-	return h.Sum(nil), nil
 }
